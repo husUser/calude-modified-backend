@@ -113,7 +113,7 @@ const createUser = async (req, res) => {
           tls: { rejectUnauthorized: false },
         });
 
-        const resetLink = `${process.env.FRONTEND_URL}studentConfirmation/${user.userId}`;
+        const resetLink = `${process.env.FRONTEND_URL}/studentConfirmation/${user.userId}`;
         const emailDetails = {
           from: process.env.EMAIL_USER,
           to: guideEmail,
