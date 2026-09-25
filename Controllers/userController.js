@@ -52,10 +52,10 @@ const createUser = async (req, res) => {
       errors.push("All fields are required.");
     }
 
-    if (!/^[A-Za-z]+$/.test(firstName))
-      errors.push("First name must contain letters only.");
-    if (!/^[A-Za-z]+$/.test(lastName))
-      errors.push("Last name must contain letters only.");
+    // if (!/^[A-Za-z]+$/.test(firstName))
+    //   errors.push("First name must contain letters only.");
+    // if (!/^[A-Za-z]+$/.test(lastName))
+    //   errors.push("Last name must contain letters only.");
     if (!/^\d+$/.test(instituteId))
       errors.push("Institute ID must contain numbers only.");
     if (!/^\+91\d{10}$/.test(mobileNumber))
