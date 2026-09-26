@@ -1,8 +1,7 @@
-const { Professor,User,Booking,Equipment } = require("../models");
+const { Professor, User, Booking, Equipment } = require("../models");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
-
 
 const sendEmail = async (email, password) => {
   try {
@@ -87,7 +86,6 @@ const sendEmail = async (email, password) => {
 
     await mailSender.sendMail(details);
     console.log("Email sent successfully to:", email);
-    
   } catch (err) {
     console.error("Error sending email:", err);
   }
@@ -180,7 +178,6 @@ const sendEmailResetForProfessor = async (email, resetLink) => {
 
     await mailSender.sendMail(details);
     console.log("Password reset email sent successfully to:", email);
-    
   } catch (err) {
     console.error("Error sending email:", err);
   }
@@ -188,7 +185,8 @@ const sendEmailResetForProfessor = async (email, resetLink) => {
 
 const createProfessorProfile = async (req, res) => {
   try {
-    const { firstName, lastName, email, labName, password, labRoomNumber } = req.body;
+    const { firstName, lastName, email, labName, password, labRoomNumber } =
+      req.body;
 
     // Trim inputs
     const trimmedFirstName = firstName?.trim() || "";
@@ -200,22 +198,40 @@ const createProfessorProfile = async (req, res) => {
 
     // Validate fields
     const errors = [];
-    if (!trimmedFirstName || !trimmedLastName || !trimmedEmail || !trimmedPassword) 
+    if (
+      !trimmedFirstName ||
+      !trimmedLastName ||
+      !trimmedEmail ||
+      !trimmedPassword
+    )
       errors.push("Required fields: firstName, lastName, email, password.");
 
-    if (!/^[A-Za-z]+$/.test(trimmedFirstName)) errors.push("First name must contain only letters.");
-    if (!/^[A-Za-z]+$/.test(trimmedLastName)) errors.push("Last name must contain only letters.");
-    if (!/^[^\s@]+@.*\.iitr\.ac\.in$/.test(trimmedEmail)) errors.push("Invalid IITR email address.");
-    if (trimmedLabName && !/^[A-Za-z0-9 ]+$/.test(trimmedLabName)) errors.push("Invalid lab name.");
-    if (trimmedLabRoomNumber && !/^[A-Za-z0-9-]+$/.test(trimmedLabRoomNumber)) errors.push("Invalid lab room number.");
-    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{6,}$/.test(trimmedPassword)) 
-      errors.push("Weak password. Include uppercase, lowercase, number, and special char.");
+    // if (!/^[A-Za-z]+$/.test(trimmedFirstName)) errors.push("First name must contain only letters.");
+    // if (!/^[A-Za-z]+$/.test(trimmedLastName)) errors.push("Last name must contain only letters.");
+    if (!/^[A-Za-z]+(?:\s[A-Za-z]+)*$/.test(trimmedFirstName))
+      errors.push("First name must contain only letters and spaces.");
+    if (!/^[A-Za-z]+(?:\s[A-Za-z]+)*$/.test(trimmedLastName))
+      errors.push("Last name must contain only letters and spaces.");
+    if (!/^[^\s@]+@.*\.iitr\.ac\.in$/.test(trimmedEmail))
+      errors.push("Invalid IITR email address.");
+    if (trimmedLabName && !/^[A-Za-z0-9 ]+$/.test(trimmedLabName))
+      errors.push("Invalid lab name.");
+    if (trimmedLabRoomNumber && !/^[A-Za-z0-9-]+$/.test(trimmedLabRoomNumber))
+      errors.push("Invalid lab room number.");
+    if (
+      !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{6,}$/.test(
+        trimmedPassword,
+      )
+    )
+      errors.push(
+        "Weak password. Include uppercase, lowercase, number, and special char.",
+      );
 
     if (errors.length > 0) return res.status(400).json({ errors });
 
     // Hash password
     const hashPassword = await bcrypt.hash(trimmedPassword, 10);
-    const lowerCasedEmail = trimmedEmail.toLowerCase()
+    const lowerCasedEmail = trimmedEmail.toLowerCase();
     // Find or create professor
     const [professor, created] = await Professor.findOrCreate({
       where: { email: lowerCasedEmail },
@@ -228,13 +244,17 @@ const createProfessorProfile = async (req, res) => {
       },
     });
 
-    if (!created) return res.status(400).json({ error: "Professor profile already exists" });
+    if (!created)
+      return res
+        .status(400)
+        .json({ error: "Professor profile already exists" });
 
     // Send email asynchronously
     sendEmail(professor.email, password).catch(console.error);
 
-    return res.status(201).json({ message: "Professor profile created successfully", professor });
-
+    return res
+      .status(201)
+      .json({ message: "Professor profile created successfully", professor });
   } catch (err) {
     console.error("Error in createProfessorProfile:", err);
     return res.status(500).json({ error: "Internal server error" });
@@ -250,47 +270,47 @@ const allProfessorsFinder = async (req, res) => {
 
     // Return the result (empty array if no records found)
     return res.status(200).json({ professors: AllProfessors });
-
   } catch (err) {
     console.error("Error in allProfessorsFinder:", err);
     return res.status(500).json({ error: "Internal server error" });
   }
 };
 
-
 const deleteProfessor = async (req, res) => {
-    const { professorId } = req.params;
-  
-    try {
-      // Check if the professor exists
-      const professor = await Professor.findByPk(professorId);
-  
-      if (!professor) {
-        return res.status(404).json({
-          errors: ["Professor not found with the provided ID."],
-        });
-      }
-  
-      // Delete the professor
-      await professor.destroy();
-  
-      return res.status(200).json({
-        message: "Professor deleted successfully.",
-      });
-    } catch (err) {
-      return res.status(500).json({
-        errors: [err.message],
+  const { professorId } = req.params;
+
+  try {
+    // Check if the professor exists
+    const professor = await Professor.findByPk(professorId);
+
+    if (!professor) {
+      return res.status(404).json({
+        errors: ["Professor not found with the provided ID."],
       });
     }
-  };
-  
+
+    // Delete the professor
+    await professor.destroy();
+
+    return res.status(200).json({
+      message: "Professor deleted successfully.",
+    });
+  } catch (err) {
+    return res.status(500).json({
+      errors: [err.message],
+    });
+  }
+};
+
 const ProfessorLogin = async (req, res) => {
   try {
     const { email, password } = req.body;
 
     // Validate input
     if (!email || !password) {
-      return res.status(400).json({ error: "Email and password are required." });
+      return res
+        .status(400)
+        .json({ error: "Email and password are required." });
     }
 
     // Trim input values
@@ -315,7 +335,7 @@ const ProfessorLogin = async (req, res) => {
         verification: user.verification,
       },
       process.env.JWT_SECRET_KEY,
-      { expiresIn: "3d" }
+      { expiresIn: "3d" },
     );
 
     // Send response with token
@@ -324,14 +344,11 @@ const ProfessorLogin = async (req, res) => {
       message: "User logged in successfully",
       token, // Include token in response (optional)
     });
-
   } catch (err) {
     console.error("Error in ProfessorLogin:", err);
     return res.status(500).json({ error: "Internal server error" });
   }
 };
-
-
 
 const ProfessorResetRequest = async (req, res) => {
   try {
@@ -356,13 +373,11 @@ const ProfessorResetRequest = async (req, res) => {
 
     // Send email asynchronously (background execution)
     sendEmailResetForProfessor(user.email, resetLink).catch(console.error);
-
   } catch (err) {
     console.error("Error in ProfessorResetRequest:", err);
     return res.status(500).json({ error: "Internal server error" });
   }
 };
-
 
 const ProfessorPasswordUpdate = async (req, res) => {
   try {
@@ -395,7 +410,7 @@ const ProfessorPasswordUpdate = async (req, res) => {
     // Update the professor's password directly
     const [updatedRows] = await Professor.update(
       { password: hashedPassword },
-      { where: { id: parsedProfessorId } } // Change "id" to "professorId" if your schema uses that
+      { where: { id: parsedProfessorId } }, // Change "id" to "professorId" if your schema uses that
     );
 
     // If no rows were updated, professor was not found
@@ -404,14 +419,11 @@ const ProfessorPasswordUpdate = async (req, res) => {
     }
 
     return res.status(200).json({ message: "Password updated successfully." });
-
   } catch (err) {
     console.error("Error in ProfessorPasswordUpdate:", err);
     return res.status(500).json({ error: "Internal server error" });
   }
 };
-
-
 
 const GetProfessorStudents = async (req, res) => {
   try {
@@ -433,17 +445,18 @@ const GetProfessorStudents = async (req, res) => {
       where: { guideId: professorId },
       attributes: { exclude: ["password"] }, // Ensure passwords are never exposed
     });
-console.log(students)
+    console.log(students);
     return res.status(200).json({ students });
-
   } catch (err) {
-    console.error(`Error in GetProfessorStudents (Professor ID: ${req.params.professorId}):`, err);
+    console.error(
+      `Error in GetProfessorStudents (Professor ID: ${req.params.professorId}):`,
+      err,
+    );
     return res.status(500).json({ error: "Internal server error" });
   }
 };
 
-
-const deleteProfessorStudents = async(req, res) => {
+const deleteProfessorStudents = async (req, res) => {
   const { studentId } = req.params;
 
   try {
@@ -457,7 +470,7 @@ const deleteProfessorStudents = async(req, res) => {
 
     // Delete the student
     await User.destroy({
-      where: { userId: studentId } 
+      where: { userId: studentId },
     });
 
     return res.status(200).json({
@@ -470,34 +483,41 @@ const deleteProfessorStudents = async(req, res) => {
   }
 };
 
-
-
-
 const viewStudentBooking = async (req, res) => {
   try {
     const { userId, guideId } = req.params;
-console.log(userId , "and" ,guideId)
+    console.log(userId, "and", guideId);
     const bookingHistoryOfStudent = await Booking.findAll({
       where: { userId: userId, guideId: guideId }, // Remove guideId if unnecessary
       include: {
         model: Equipment,
         attributes: ["equipmentName"], // Fetch only equipment name
       },
-      attributes: ["bookingId", "bookedDate", "slotTime", "slotDate", "bookingStatus"], // Fetch only necessary fields
+      attributes: [
+        "bookingId",
+        "bookedDate",
+        "slotTime",
+        "slotDate",
+        "bookingStatus",
+      ], // Fetch only necessary fields
     });
-console.log(bookingHistoryOfStudent)
+    console.log(bookingHistoryOfStudent);
     // Return the result (empty array if no records found)
     return res.status(200).json({ bookingHistory: bookingHistoryOfStudent });
-
   } catch (err) {
     console.error("Error in viewStudentBooking:", err);
     return res.status(500).json({ error: "Internal server error" });
   }
 };
 
-
-
-
 module.exports = {
-    allProfessorsFinder,createProfessorProfile,deleteProfessor,ProfessorLogin,ProfessorResetRequest,ProfessorPasswordUpdate,GetProfessorStudents,deleteProfessorStudents,viewStudentBooking
-  };
+  allProfessorsFinder,
+  createProfessorProfile,
+  deleteProfessor,
+  ProfessorLogin,
+  ProfessorResetRequest,
+  ProfessorPasswordUpdate,
+  GetProfessorStudents,
+  deleteProfessorStudents,
+  viewStudentBooking,
+};
