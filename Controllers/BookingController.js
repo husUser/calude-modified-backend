@@ -234,7 +234,13 @@ const bookEquipment = async (req, res) => {
 const getBookingById = async (req,res)=>{
   const {equipmentId} = req.params
   try {
-    const equipment = await Booking.findAll({ where: { equipmentId } });
+    const equipment = await Booking.findAll({
+      where: { equipmentId },
+      include: {
+        model: User,
+        attributes: ['firstName', 'lastName'], // only what the tooltip needs, nothing sensitive
+      },
+    });
     return res.status(201).send(equipment);
   } catch (error) {
     return res.status(500).json({ message: "An error occurred on sending booking status." });

@@ -178,6 +178,73 @@ const deleteEquipment = async (req, res) => {
       return res.status(500).json({ errors: [err.message] });
     }
   };
-  
 
-  module.exports = { addEquipment,updateEquipmentWorkingStatus,getAllEquipments,getEquipmentById,deleteEquipment,getOperator };
+
+  // Assign/re-assign an operator to an existing equipment.
+  // Mirrors the operator-copy logic already used in addEquipment: operator
+  // details (name/email/phone) are never trusted from the request body,
+  // they are always re-read from the User table on the server.
+  const transferOperator = async (req, res) => {
+    const { equipmentId, operatorUserId } = req.body;
+
+    if (!equipmentId) {
+      return res.status(400).json({
+        message: "equipmentId is required",
+      });
+    }
+
+    if (!operatorUserId) {
+      return res.status(400).json({
+        message: "operatorUserId is required",
+      });
+    }
+
+    try {
+      // Equipment must exist
+      const equipment = await Equipment.findByPk(equipmentId);
+      if (!equipment) {
+        return res.status(404).json({
+          message: "Equipment not found",
+        });
+      }
+
+      // Selected user must exist
+      const operator = await User.findOne({
+        where: { userId: operatorUserId },
+      });
+      if (!operator) {
+        return res.status(404).json({
+          message: "Operator not found",
+        });
+      }
+
+      // Selected user must actually be an operator (role 1), per the
+      // existing role model used by getOperator
+      if (parseInt(operator.role, 10) !== 1) {
+        return res.status(400).json({
+          message: "Selected user is not a valid operator",
+        });
+      }
+
+      // Update only the operator-related columns on the existing row
+      await equipment.update({
+        operatorName: operator.firstName,
+        operatorUserID: operator.userId,
+        operatorEmail: operator.email,
+        operatorPhoneNumber: operator.mobileNumber,
+      });
+
+      res.status(200).json({
+        message: "Equipment operator updated successfully",
+        data: equipment,
+      });
+    } catch (error) {
+      res.status(500).json({
+        message: "Failed to update equipment operator",
+        error: error.message,
+      });
+    }
+  };
+
+
+  module.exports = { addEquipment,updateEquipmentWorkingStatus,getAllEquipments,getEquipmentById,deleteEquipment,getOperator,transferOperator };

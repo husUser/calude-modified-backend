@@ -1,5 +1,5 @@
 
-const {Result,Equipment,User} = require("../models");
+const {Result,Equipment,User,Booking,sequelize} = require("../models");
 const { Op } = require('sequelize');
 
 
@@ -231,7 +231,53 @@ const UpdateVisibility = async(req,res)  =>{
 
 
 
-  module.exports={StatusUpdateByStudent,statusUpdateByOperator,UpdateVisibility,AllBookingFinderFromResultForOperator,AllBookingFinderFromResultForStudent}
+// Cancel one specific booking for a student.
+// findAllBookingForStudent (myBookings) reads from the Result table, so the
+// Result row must be deleted for it to disappear from myBookings. The
+// booking-status/quota logic (getBookingById, the quota count in
+// bookEquipment) reads from the Booking table, so that row must also be
+// deleted for the slot to free up in bookingTable. Result.bookingId is not
+// a real FK/association (see models/ResultTable.js), so both deletes are
+// done explicitly here, in one transaction so they either both succeed or
+// neither does.
+const cancelBookingByStudent = async (req, res) => {
+  const { userId, resultId } = req.params;
+
+  const t = await sequelize.transaction();
+  try {
+    // Scoped by userId as well, matching StatusUpdateByStudent's existing
+    // ownership check — a student can only cancel their own booking.
+    const resultToCancel = await Result.findOne({
+      where: { userId, resultId },
+      transaction: t,
+    });
+
+    if (!resultToCancel) {
+      await t.rollback();
+      return res.status(404).json({ errors: ["Booking not found."] });
+    }
+
+    const { bookingId } = resultToCancel;
+
+    if (bookingId) {
+      await Booking.destroy({
+        where: { bookingId, userId },
+        transaction: t,
+      });
+    }
+
+    await resultToCancel.destroy({ transaction: t });
+
+    await t.commit();
+    return res.status(200).json({ message: ["Booking cancelled successfully."] });
+  } catch (err) {
+    await t.rollback();
+    return res.status(500).json({ errors: [err.message] });
+  }
+};
+
+
+  module.exports={StatusUpdateByStudent,statusUpdateByOperator,UpdateVisibility,AllBookingFinderFromResultForOperator,AllBookingFinderFromResultForStudent,cancelBookingByStudent}
 
 
  
