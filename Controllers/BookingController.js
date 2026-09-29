@@ -1,7 +1,8 @@
 
 const { Op } = require('sequelize');
-const { Equipment ,Booking,User,Result } = require('../models');
+const { Equipment ,Booking,User,Result,Professor,Report } = require('../models');
 const { getActivePeriod, isDateInActivePeriod, isWeekendDate } = require('../utils/bookingPeriod');
+const { buildReportRows } = require('../utils/reportSnapshot');
 
 
 // const bookEquipment = async (req, res) => {
@@ -214,6 +215,14 @@ const bookEquipment = async (req, res) => {
 
     // BulkCreate result records in same transaction
     await Result.bulkCreate(resultData, { transaction: t });
+
+    // Permanent historical snapshot for the Report table. Written in the same
+    // transaction as the booking, so the booking and its Report rows either
+    // both exist or neither does. Report has no FK to Booking, so deleting the
+    // Booking later never removes these rows.
+    const professor = await Professor.findByPk(guideId, { transaction: t });
+    const reportRows = buildReportRows({ createdBookings, user, professor, equipment });
+    await Report.bulkCreate(reportRows, { transaction: t });
 
     // commit transaction
     await t.commit();

@@ -51,6 +51,7 @@ db.syncTablesInOrder = async () => {
     await db.Blocking.sync({ alter: true });
     await db.Clearance.sync({ alter: true });
     await db.Notifications.sync({ alter: true });
+    await db.Report.sync({ alter: true });
     console.log('Tables created in order successfully');
   } catch (error) {
     console.error('Error syncing tables:', error);
